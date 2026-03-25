@@ -225,42 +225,6 @@
       font-size: 0.8125rem;
     }
 
-    /* Consent banner */
-    .consent-banner {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 1000;
-      background: var(--amplitude-dark);
-      color: #e2e8f0;
-      padding: 1rem 1.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 1rem;
-      box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
-    }
-    .consent-banner.hidden { display: none; }
-    .consent-banner p {
-      font-size: 0.9375rem;
-      max-width: 600px;
-    }
-    .consent-banner .actions { display: flex; gap: 0.75rem; }
-    .consent-banner .btn {
-      padding: 0.5rem 1rem;
-      font-size: 0.875rem;
-    }
-    .consent-banner .btn-accept {
-      background: linear-gradient(135deg, var(--amplitude-purple), var(--amplitude-blue));
-      color: white;
-    }
-    .consent-banner .btn-decline {
-      background: transparent;
-      color: #94a3b8;
-      border: 1px solid #475569;
-    }
   </style>
 </head>
 <body>
@@ -402,98 +366,47 @@
     </div>
   </footer>
 
-  <!-- Consent banner: Amplitude is only loaded after user accepts -->
-  <div class="consent-banner" id="consent-banner">
-    <p>We use analytics, session replay, guides and surveys, and experimentation to improve this demo. Accept to enable tracking and product demos.</p>
-    <div class="actions">
-      <button type="button" class="btn btn-decline" id="consent-decline">Decline</button>
-      <button type="button" class="btn btn-accept" id="consent-accept">Accept</button>
-    </div>
-  </div>
-
+  <!-- Amplitude SDKs: Analytics, Session Replay, Guides and Surveys, Experiment -->
+  <script src="https://cdn.amplitude.com/script/4ea44bb87f08f50984dbb3ae89800ccf.js"></script>
+  <script src="https://cdn.amplitude.com/libs/plugin-session-replay-browser-1.13.10-min.js.gz"></script>
+  <script src="https://cdn.amplitude.com/script/4ea44bb87f08f50984dbb3ae89800ccf.engagement.js"></script>
+  <script src="https://unpkg.com/@amplitude/experiment-js-client@1.15.5/dist/experiment.umd.js"></script>
   <script>
     var form = document.getElementById('demo-form');
     if (form) form.addEventListener('submit', function (e) { e.preventDefault(); });
-  </script>
-  <script>
+
     (function () {
-      const API_KEY = '4ea44bb87f08f50984dbb3ae89800ccf';
-      // Replace with your Experiment deployment key from Amplitude Experiment settings
-      const EXPERIMENT_DEPLOYMENT_KEY = 'client-z9oS7YNTzCQWKW79PunAQaQORTPcuYA2';
+      var API_KEY = '4ea44bb87f08f50984dbb3ae89800ccf';
+      var EXPERIMENT_DEPLOYMENT_KEY = 'client-z9oS7YNTzCQWKW79PunAQaQORTPcuYA2';
 
-      const banner = document.getElementById('consent-banner');
-      const acceptBtn = document.getElementById('consent-accept');
-      const declineBtn = document.getElementById('consent-decline');
-
-      function hideBanner() {
-        banner.classList.add('hidden');
-      }
-
-      function loadScript(src) {
-        return new Promise(function (resolve, reject) {
-          var s = document.createElement('script');
-          s.src = src;
-          s.onload = resolve;
-          s.onerror = reject;
-          document.head.appendChild(s);
+      if (window.amplitude) {
+        if (window.sessionReplay && typeof window.sessionReplay.plugin === 'function') {
+          window.amplitude.add(window.sessionReplay.plugin({ sampleRate: 1 }));
+        }
+        if (window.engagement && typeof window.engagement.plugin === 'function') {
+          window.amplitude.add(window.engagement.plugin());
+        }
+        window.amplitude.init(API_KEY, {
+          fetchRemoteConfig: true,
+          autocapture: {
+            attribution: true,
+            pageViews: true,
+            sessions: true,
+            formInteractions: true,
+            fileDownloads: true,
+            elementInteractions: false,
+            pageUrlEnrichment: true,
+            frustrationInteractions: true,
+            networkTracking: false,
+            webVitals: false
+          }
         });
       }
 
-      function initAmplitudeAfterConsent() {
-        hideBanner();
-
-        var amplitudeScript = 'https://cdn.amplitude.com/script/' + API_KEY + '.js';
-        var sessionReplayScript = 'https://cdn.amplitude.com/libs/plugin-session-replay-browser-1.13.10-min.js.gz';
-        var engagementScript = 'https://cdn.amplitude.com/script/' + API_KEY + '.engagement.js';
-        var experimentScript = 'https://unpkg.com/@amplitude/experiment-js-client@1.15.5/dist/experiment.umd.js';
-
-        loadScript(amplitudeScript)
-          .then(function () {
-            return loadScript(sessionReplayScript);
-          })
-          .then(function () {
-            return loadScript(engagementScript);
-          })
-          .then(function () {
-            return loadScript(experimentScript);
-          })
-          .then(function () {
-            if (!window.amplitude) return;
-            if (window.sessionReplay && typeof window.sessionReplay.plugin === 'function') {
-              window.amplitude.add(window.sessionReplay.plugin({ sampleRate: 1 }));
-            }
-            if (window.engagement && typeof window.engagement.plugin === 'function') {
-              window.amplitude.add(window.engagement.plugin());
-            }
-            window.amplitude.init(API_KEY, {
-              fetchRemoteConfig: true,
-              autocapture: {
-                attribution: true,
-                pageViews: true,
-                sessions: true,
-                formInteractions: true,
-                fileDownloads: true,
-                elementInteractions: true,
-                pageUrlEnrichment: true,
-                frustrationInteractions: true,
-                networkTracking: false,
-                webVitals: false
-              }
-            });
-            if (window.Experiment && EXPERIMENT_DEPLOYMENT_KEY && EXPERIMENT_DEPLOYMENT_KEY !== 'DEPLOYMENT_KEY') {
-              var experiment = window.Experiment.initializeWithAmplitudeAnalytics(EXPERIMENT_DEPLOYMENT_KEY);
-              experiment.fetch();
-            }
-          })
-          .catch(function (err) {
-            console.warn('Amplitude demo load error:', err);
-          });
+      if (window.Experiment && EXPERIMENT_DEPLOYMENT_KEY) {
+        var experiment = window.Experiment.initializeWithAmplitudeAnalytics(EXPERIMENT_DEPLOYMENT_KEY);
+        experiment.fetch();
       }
-
-      acceptBtn.addEventListener('click', initAmplitudeAfterConsent);
-      declineBtn.addEventListener('click', function () {
-        hideBanner();
-      });
     })();
   </script>
 </body>
